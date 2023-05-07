@@ -24,7 +24,37 @@ type Resolver struct {
     PreferGo bool
     StrictErrors bool
     Dial func(ctx context.Context , network, address string) (Conn, error)
-
 }
 
 ```
+
+### dynamically choose a port
+![](images/2023-05-07-11-13-37.png)
+- net.Listen invokes net.ListenConfig.Listen
+- net.Resolver.resolveAddrList resolves the address as `0` if the port in the address
+parameter is empty or `0`
+- net.ListenConfig.Listen creates a net.SyncListener contains a Listen's parameters and configuration
+When the network protocol is tcp, net.ListenConfig.Listen invokes net.sysListener.listenTCP
+```go 
+func (l *ListenConfig) Listen(ctx context.Context, network, addr string) (net.Listener, error) {
+    addrs, err := DefaultResolver.resolveAddrList(ctx, "listen", address, nil)
+    sl := &sysListener{
+        ListenConfig: *lc,
+        network: network,
+        address:address,
+    }
+    var l Listener 
+    la := addrs.first(isIPv4)
+    switch la := la.(type) {
+        case *TCPAddr:
+            l, err := sl.listenTCP(ctx, la)
+        case *UnixAddr:
+            l, err := sl.ListenUnix(ctx, la)
+    }
+}
+```
+
+
+### tcp io 
+- read: receive
+- write: send
